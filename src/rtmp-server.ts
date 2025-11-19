@@ -47,7 +47,7 @@ export class RTMPServer {
     this.server = new NodeMediaServer(nmsConfig);
 
     // Handle new stream published
-    this.server.on('prePublish', (id, streamPath, args) => {
+    this.server.on('prePublish', (id: string, streamPath: string, args: any) => {
       console.log(`[RTMPServer] Stream publish attempt: ${streamPath}`);
 
       // Extract stream key from path (e.g., /live/streamkey -> streamkey)
@@ -61,7 +61,7 @@ export class RTMPServer {
       console.log(`[RTMPServer] Stream key: ${streamKey}`);
     });
 
-    this.server.on('postPublish', (id, streamPath, args) => {
+    this.server.on('postPublish', (id: string, streamPath: string, args: any) => {
       console.log(`[RTMPServer] Stream published: ${streamPath}`);
 
       const streamKey = this.extractStreamKey(streamPath);
@@ -78,7 +78,7 @@ export class RTMPServer {
     });
 
     // Handle stream stopped
-    this.server.on('donePublish', (id, streamPath, args) => {
+    this.server.on('donePublish', (id: string, streamPath: string, args: any) => {
       console.log(`[RTMPServer] Stream stopped: ${streamPath}`);
 
       const streamKey = this.extractStreamKey(streamPath);

@@ -71,6 +71,151 @@ docker run -d \
   video-edge-service
 ```
 
+## AWS Deployment
+
+The service can be deployed to AWS using either ECS (Fargate) or EC2. Both options include complete Terraform configurations.
+
+### Prerequisites
+
+- AWS CLI configured with appropriate credentials
+- Terraform >= 1.0
+- Docker (for ECS deployment)
+
+### Option 1: Deploy to AWS ECS (Fargate) - Recommended
+
+ECS with Fargate provides a serverless container deployment with automatic scaling capabilities.
+
+```bash
+# Run the automated deployment script
+./scripts/deploy-ecs.sh
+
+# Or deploy manually:
+cd terraform
+terraform init
+terraform apply
+
+# Build and push Docker image
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $(terraform output -raw ecr_repository_url)
+docker build -t video-edge-service .
+docker tag video-edge-service:latest $(terraform output -raw ecr_repository_url):latest
+docker push $(terraform output -raw ecr_repository_url):latest
+
+# Force new deployment
+aws ecs update-service --cluster $(terraform output -raw ecs_cluster_name) --service $(terraform output -raw ecs_service_name) --force-new-deployment
+
+# Get the service public IP
+./scripts/get-service-ip.sh
+```
+
+**ECS Configuration:**
+- Default CPU: 1 vCPU (1024 units)
+- Default Memory: 2 GB (2048 MB)
+- Auto-scaling: Not configured by default (can be added)
+- Cost: ~$30-40/month for a single task running 24/7
+
+### Option 2: Deploy to AWS EC2
+
+EC2 deployment provides more control and can be more cost-effective for always-on workloads.
+
+```bash
+# Generate SSH key pair first
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/video-edge-key
+
+# Deploy infrastructure
+cd terraform-ec2
+terraform init
+terraform apply -var="public_key_path=~/.ssh/video-edge-key.pub"
+
+# Get connection info
+terraform output
+```
+
+**EC2 Configuration:**
+- Default Instance Type: t3.medium (2 vCPU, 4 GB RAM)
+- Elastic IP: Included for stable addressing
+- SSH Access: Enabled on port 22
+- Cost: ~$30-35/month for t3.medium
+
+After deployment, you'll need to deploy your application code:
+
+```bash
+# SSH to the instance
+ssh -i ~/.ssh/video-edge-key ec2-user@<public-ip>
+
+# Clone your repository or copy files
+cd /opt/video-edge
+# Copy your source code here
+
+# Build and start with Docker
+docker-compose up -d
+```
+
+### AWS Resources Created
+
+Both deployment options create:
+- VPC with public subnets
+- Internet Gateway
+- Security Groups (RTMP: 1935, API: 3000, HTTP: 8000)
+- CloudWatch Logs (ECS only)
+- ECR Repository (ECS only)
+
+### Customizing the Deployment
+
+Edit `terraform/variables.tf` or `terraform-ec2/variables.tf`:
+
+```hcl
+# For ECS
+variable "ecs_cpu" {
+  default = "2048"  # 2 vCPU
+}
+
+variable "ecs_memory" {
+  default = "4096"  # 4 GB
+}
+
+# For EC2
+variable "instance_type" {
+  default = "t3.large"
+}
+```
+
+### Destroying AWS Resources
+
+```bash
+# For ECS
+./scripts/destroy-ecs.sh
+
+# For EC2
+cd terraform-ec2
+terraform destroy
+
+# Manual cleanup if needed
+aws ecr delete-repository --repository-name video-edge-service --force
+```
+
+### Monitoring and Logs
+
+**ECS:**
+```bash
+# View logs
+aws logs tail /ecs/video-edge-service --follow
+
+# Check service status
+aws ecs describe-services --cluster video-edge-cluster --services video-edge-service
+```
+
+**EC2:**
+```bash
+# SSH to instance
+ssh -i ~/.ssh/video-edge-key ec2-user@<public-ip>
+
+# View application logs
+docker-compose logs -f
+
+# Check service status
+docker-compose ps
+```
+
 ## Configuration
 
 ### Environment Variables

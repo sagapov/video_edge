@@ -71,7 +71,8 @@ aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --
 
 # Build image
 echo "Building Docker image..."
-docker build -t $ECR_REPO_NAME .
+# Use --platform linux/amd64 for compatibility with ECS Fargate (required for Apple Silicon Macs)
+docker build --platform linux/amd64 -t $ECR_REPO_NAME .
 
 # Tag and push
 echo "Tagging and pushing image..."
@@ -100,6 +101,7 @@ sleep 30
 TASK_ARN=$(aws ecs list-tasks \
     --cluster $ECS_CLUSTER \
     --service-name $ECS_SERVICE \
+    --desired-status RUNNING \
     --query 'taskArns[0]' \
     --output text \
     --region $AWS_REGION)

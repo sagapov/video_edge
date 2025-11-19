@@ -22,6 +22,7 @@ echo "Getting service information..."
 TASK_ARN=$(aws ecs list-tasks \
     --cluster $ECS_CLUSTER \
     --service-name $ECS_SERVICE \
+    --desired-status RUNNING \
     --query 'taskArns[0]' \
     --output text \
     --region $AWS_REGION)

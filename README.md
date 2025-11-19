@@ -59,7 +59,7 @@ docker-compose down
 Or build and run manually:
 
 ```bash
-# Build image
+# Build image (add --platform linux/amd64 for Apple Silicon Macs if deploying to x86 servers)
 docker build -t video-edge-service .
 
 # Run container
@@ -74,6 +74,16 @@ docker run -d \
 ## AWS Deployment
 
 The service can be deployed to AWS using either ECS (Fargate) or EC2. Both options include complete Terraform configurations.
+
+### Quick Start
+
+```bash
+# Deploy to AWS ECS with one command
+./scripts/deploy-ecs.sh
+
+# Get your service IP address
+./scripts/get-service-ip.sh
+```
 
 ### Prerequisites
 
@@ -96,7 +106,8 @@ terraform apply
 
 # Build and push Docker image
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $(terraform output -raw ecr_repository_url)
-docker build -t video-edge-service .
+# Note: Use --platform linux/amd64 for Apple Silicon Macs
+docker build --platform linux/amd64 -t video-edge-service .
 docker tag video-edge-service:latest $(terraform output -raw ecr_repository_url):latest
 docker push $(terraform output -raw ecr_repository_url):latest
 
